@@ -135,4 +135,20 @@ Mat4 rotateZ(float angle_rad) {
     return mat;
 }
 
+Mat4 perspective(float fov_rad, float aspect, float near, float far) {
+    Mat4 mat; // Inicia identidade
+    float tan_half_fov = std::tan(fov_rad / 2.0f);
+    
+    // Zera tudo primeiro (importante pois a identidade tem 1s que atrapalham aqui)
+    for(int i=0; i<4; i++) for(int j=0; j<4; j++) mat.m[i][j] = 0.0f;
+
+    mat.m[0][0] = 1.0f / (aspect * tan_half_fov);
+    mat.m[1][1] = 1.0f / tan_half_fov;
+    mat.m[2][2] = -(far + near) / (far - near);
+    mat.m[2][3] = -(2.0f * far * near) / (far - near);
+    mat.m[3][2] = -1.0f; // Isso coloca o -Z no W, essencial para a divisão perspectiva
+    
+    return mat;
+}
+
 #endif
