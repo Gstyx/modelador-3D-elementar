@@ -6,8 +6,37 @@
 const int LARGURA = 800;
 const int ALTURA = 600;
 const int TARGET_FPS = 60;
-const int FRAME_DELAY = 1000 / TARGET_FPS; 
+const int FRAME_DELAY = 1000 / TARGET_FPS;
 std::vector<uint32_t> framebuffer(LARGURA * ALTURA);
+
+//Cubo
+struct Cubo {
+    Vec4 posicao;
+    Vec4 rotacao;
+    Vec4 escala;
+    uint32_t cor;
+};
+
+//Dados do cubo (padrao)
+Vec4 vertices_cubo[8] = {
+    {-1, -1, -1}, { 1, -1, -1}, { 1,  1, -1}, {-1,  1, -1}, // Frente
+    {-1, -1,  1}, { 1, -1,  1}, { 1,  1,  1}, {-1,  1,  1}  // Trás
+};
+
+int indices_triangulos[12][3] = {
+    // Frente
+    {0, 1, 2}, {0, 2, 3},
+    // Trás
+    {5, 4, 7}, {5, 7, 6},
+    // Topo
+    {3, 2, 6}, {3, 6, 7},
+    // Base
+    {4, 5, 1}, {4, 1, 0},
+    // Esquerda
+    {4, 0, 3}, {4, 3, 7},
+    // Direita
+    {1, 5, 6}, {1, 6, 2}
+};
 
 // Função para pintar pixel (com verificação de limites)
 void put_pixel(int x, int y, uint32_t color) {
@@ -31,19 +60,46 @@ void draw_line(int x0, int y0, int x1, int y1, uint32_t color) {
     }
 }
 
-// Definição do Cubo (Coordenadas locais, centrado em 0,0,0)
-// 8 Vértices
-Vec4 vertices_cubo[8] = {
-    {-1, -1, -1}, { 1, -1, -1}, { 1,  1, -1}, {-1,  1, -1}, // Frente
-    {-1, -1,  1}, { 1, -1,  1}, { 1,  1,  1}, {-1,  1,  1}  // Trás
-};
+void swap_int(int& a, int& b) { int t = a; a = b; b = t; }
+void swap_float(float& a, float& b) { float t = a; a = b; b = t; }
 
-// 12 Arestas (Índices dos vértices que se conectam)
-int arestas[12][2] = {
-    {0,1}, {1,2}, {2,3}, {3,0}, // Frente
-    {4,5}, {5,6}, {6,7}, {7,4}, // Trás
-    {0,4}, {1,5}, {2,6}, {3,7}  // Conexões Frente-Trás
-};
+
+
+void fill_triangle(int x1, int y1, int x2, int y2, int x3, int y3, uint32_t color) {
+    //Ordenar os vértices por Y
+    if (y1 > y2) { swap_int(x1, x2); swap_int(y1, y2); }
+    if (y1 > y3) { swap_int(x1, x3); swap_int(y1, y3); }
+    if (y2 > y3) { swap_int(x2, x3); swap_int(y2, y3); }
+
+    // Altura total do triângulo
+    int total_height = y3 - y1;
+    if (total_height == 0) return;
+
+    // 2. Dividir em duas metades (parte superior e inferior)
+    // Loop para varrer de y1 até y3
+    for (int i = 0; i < total_height; i++) {
+        bool second_half = i > (y2 - y1) || (y2 == y1);
+        int segment_height = second_half ? (y3 - y2) : (y2 - y1);
+        
+        float alpha = (float)i / total_height;
+        float beta  = (float)(i - (second_half ? (y2 - y1) : 0)) / segment_height; 
+        
+        // Calcular coordenadas X das arestas
+        // A: vai de 1 a 3 (lado longo)
+        // B: vai de 1 a 2 (primeira metade) ou de 2 a 3 (segunda metade)
+        int Ax = x1 + (x3 - x1) * alpha;
+        int Bx = second_half ? (x2 + (x3 - x2) * beta) : (x1 + (x2 - x1) * beta);
+
+        // Garantir que Ax < Bx para o loop horizontal
+        if (Ax > Bx) swap_int(Ax, Bx);
+
+        // 3. Preencher a linha horizontal (Scanline)
+        int y = y1 + i;
+        for (int x = Ax; x <= Bx; x++) {
+            put_pixel(x, y, color);
+        }
+    }
+}
 
 int main(int argc, char* argv[]) {
     SDL_Init(SDL_INIT_VIDEO);
@@ -52,7 +108,22 @@ int main(int argc, char* argv[]) {
     SDL_Texture* texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, LARGURA, ALTURA);
 
     bool running = true;
-    float angulo = 0.0f;
+    
+    std::vector<Cubo> cena;
+
+    Cubo c1;
+    c1.posicao = Vec4(-1.5f, 0, -6);
+    c1.rotacao = Vec4(0.5f, 0.5f, 0);
+    c1.escala = Vec4(1, 1, 1);
+    c1.cor = 0xFFFF0000; // Vermelho
+    cena.push_back(c1);
+
+    Cubo c2;
+    c2.posicao = Vec4(0.5f, 0, -5); // X=0.5 (mais a direita), Z=-5 (mais perto)
+    c2.rotacao = Vec4(0, 0.2f, 0);
+    c2.escala = Vec4(1, 1, 1);
+    c2.cor = 0xFF00FF00; // Verde
+    cena.push_back(c2);
 
     while (running) {
         Uint32 frameStart = SDL_GetTicks();
@@ -63,56 +134,62 @@ int main(int argc, char* argv[]) {
         // Limpa tela (Preto)
         std::fill(framebuffer.begin(), framebuffer.end(), 0xFF000000);
 
-        // --- PIPELINE GRÁFICO ---
-        
-        // 1. Configuração das Matrizes
-        angulo += 0.02f;
-        Mat4 model = translate(0, 0, -5) * rotateY(angulo) * rotateX(angulo * 0.5f); // Move p/ fundo e gira
-        Mat4 proj = perspective(1.04f, (float)LARGURA/ALTURA, 0.1f, 100.0f); // 1.04 rad ~= 60 graus
-        
-        // Matriz Final (ModelViewProjection)
-        Mat4 mvp = proj * model;
+        // Matriz de Projeção (Câmera fixa por enquanto)
+        Mat4 proj = perspective(1.04f, (float)LARGURA/ALTURA, 0.1f, 100.0f);
 
-        // 2. Processar Vértices
-        Vec4 vertices_proj[8];
-        for(int i=0; i<8; i++) {
-            // Aplica MVP
-            Vec4 v = mvp * vertices_cubo[i];
+        // Renderizar cada objeto da cena
+        for (const auto& cubo : cena) {
+            // 1. Criar Matriz de Modelo (Transformações do objeto)
+            // Ordem: Escala -> Rotação Z -> Rot Y -> Rot X -> Translação
+            Mat4 model = translate(cubo.posicao.x, cubo.posicao.y, cubo.posicao.z) * rotateX(cubo.rotacao.x) * rotateY(cubo.rotacao.y) * rotateZ(cubo.rotacao.z) *
+                         scale(cubo.escala.x); // Assumindo escala uniforme
             
-            // Divisão Perspectiva (Perspectiva acontece aqui!)
-            // Passamos de Homogêneo 4D para Cartesiano 3D Normalizado (NDC)
-            if (v.w != 0) {
-                v.x /= v.w; v.y /= v.w; v.z /= v.w;
+            Mat4 mvp = proj * model;
+
+            // 2. Projetar Vértices
+            Vec4 proj_verts[8];
+            for(int i=0; i<8; i++) {
+                Vec4 v = mvp * vertices_cubo[i];
+                if (v.w != 0) { v.x /= v.w; v.y /= v.w; v.z /= v.w; }
+                proj_verts[i] = v;
             }
-            vertices_proj[i] = v;
-        }
 
-        // 3. Desenhar Arestas (Viewport Transform na hora de desenhar)
-        for(int i=0; i<12; i++) {
-            Vec4 p1 = vertices_proj[arestas[i][0]];
-            Vec4 p2 = vertices_proj[arestas[i][1]];
+            // 3. Desenhar Triângulos (Faces Sólidas)
+            for(int i=0; i<12; i++) {
+                Vec4 p1 = proj_verts[indices_triangulos[i][0]];
+                Vec4 p2 = proj_verts[indices_triangulos[i][1]];
+                Vec4 p3 = proj_verts[indices_triangulos[i][2]];
 
-            // O intervalo visível em NDC é [-1, 1]
-            if (p1.z < -1.0f || p1.z > 1.0f || p2.z < -1.0f || p2.z > 1.0f) continue;
+                // Culling Simples (Ignora se algum ponto estiver atrás da câmera)
+                // O correto seria "clipar", mas para simplificar, se Z < 0 ignoramos
+                if (p1.z <= 0 || p2.z <= 0 || p3.z <= 0) continue; 
 
-            // Viewport: Mapear de [-1, 1] para [0, LARGURA] e [0, ALTURA]
-            int x1_tela = (int)((p1.x + 1.0f) * 0.5f * LARGURA);
-            int y1_tela = (int)((1.0f - p1.y) * 0.5f * ALTURA); // 1.0 - y inverte o eixo Y (tela cresce p/ baixo)
-            
-            int x2_tela = (int)((p2.x + 1.0f) * 0.5f * LARGURA);
-            int y2_tela = (int)((1.0f - p2.y) * 0.5f * ALTURA);
+                // Conversão para Coordenadas de Tela
+                int x1 = (int)((p1.x + 1.0f) * 0.5f * LARGURA);
+                int y1 = (int)((1.0f - p1.y) * 0.5f * ALTURA);
+                
+                int x2 = (int)((p2.x + 1.0f) * 0.5f * LARGURA);
+                int y2 = (int)((1.0f - p2.y) * 0.5f * ALTURA);
+                
+                int x3 = (int)((p3.x + 1.0f) * 0.5f * LARGURA);
+                int y3 = (int)((1.0f - p3.y) * 0.5f * ALTURA);
 
-            draw_line(x1_tela, y1_tela, x2_tela, y2_tela, 0xFF00FF00); // Verde Matrix
+                // Desenha o triângulo preenchido com a cor do cubo
+                fill_triangle(x1, y1, x2, y2, x3, y3, cubo.cor);
+                
+                // Opcional: Desenhar contorno preto para ver as divisões (wireframe sobreposto)
+                // draw_line(x1, y1, x2, y2, 0xFF000000);
+                // draw_line(x2, y2, x3, y3, 0xFF000000);
+                // draw_line(x3, y3, x1, y1, 0xFF000000);
+            }
         }
 
         SDL_UpdateTexture(texture, nullptr, framebuffer.data(), LARGURA * sizeof(uint32_t));
         SDL_RenderCopy(renderer, texture, nullptr, nullptr);
         SDL_RenderPresent(renderer);
+
         int frameTime = SDL_GetTicks() - frameStart;
-        
-        if (FRAME_DELAY > frameTime) {
-            SDL_Delay(FRAME_DELAY - frameTime);
-        }
+        if (FRAME_DELAY > frameTime) SDL_Delay(FRAME_DELAY - frameTime);
     }
 
     SDL_DestroyTexture(texture);
