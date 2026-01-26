@@ -87,3 +87,7 @@ Execute no terminal:
 ```bash
 sudo apt-get update
 sudo apt-get install build-essential libsdl2-dev
+
+## Para compilar
+g++ main.cpp -o renderizador -lSDL2
+./renderizador

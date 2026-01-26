@@ -1,12 +1,12 @@
 #ifndef RASTERIZER_H
 #define RASTERIZER_H
 
-#include "math_utils.h" // Importante: inclui as definições de Vec4 e Cubo
+#include "math_utils.h" 
 #include <vector>
 #include <cmath>
 #include <algorithm>
 
-// Função auxiliar de luz (usada por ambos os modos)
+// [PIPELINE] Shading (Iluminação): Calcula a cor final baseada na Luz e Material
 inline uint32_t calc_luz(Vec4 pos, Vec4 norm, Cubo mat, Vec4 lightPos, Vec4 camPos) {
     Vec4 L = lightPos - pos; L.normalize();
     Vec4 N = norm; N.normalize();
@@ -29,7 +29,7 @@ inline uint32_t calc_luz(Vec4 pos, Vec4 norm, Cubo mat, Vec4 lightPos, Vec4 camP
     return (255<<24) | (clamp(fr)<<16) | (clamp(fg)<<8) | clamp(fb);
 }
 
-// Rasterizador FLAT (Cor constante)
+// [PIPELINE] Rasterização (Conversão de Primitivas Geométricas para Fragmentos/Pixels)
 inline void fill_triangle_flat(int x1, int y1, float z1, 
                                int x2, int y2, float z2, 
                                int x3, int y3, float z3, 
@@ -65,6 +65,8 @@ inline void fill_triangle_flat(int x1, int y1, float z1,
             float z = interp(az, bz, phi);
             
             int idx = y * LARGURA + x;
+            
+            // [PIPELINE] Ocultação de Superfícies (Z-Buffer)
             if (z < zbuffer[idx]) {
                 zbuffer[idx] = z;
                 framebuffer[idx] = flat_color;
@@ -73,7 +75,7 @@ inline void fill_triangle_flat(int x1, int y1, float z1,
     }
 }
 
-// Rasterizador PHONG (Cor por pixel)
+// [PIPELINE] Rasterização com Interpolação de Phong (Shading por Pixel)
 inline void fill_triangle_phong(int x1, int y1, float z1, Vec4 w1, 
                                 int x2, int y2, float z2, Vec4 w2, 
                                 int x3, int y3, float z3, Vec4 w3, 
@@ -112,8 +114,11 @@ inline void fill_triangle_phong(int x1, int y1, float z1, Vec4 w1,
             float z = interp(az, bz, phi);
             
             int idx = y * LARGURA + x;
+            
+            // [PIPELINE] Z-Buffer
             if (z < zbuffer[idx]) {
                 zbuffer[idx] = z;
+                // Interpolamos a posição REAL do pixel no mundo para calcular a luz correta
                 Vec4 p_pixel = interp_vec(aw, bw, phi);
                 framebuffer[idx] = calc_luz(p_pixel, normal, mat, lightPos, camPos);
             }
