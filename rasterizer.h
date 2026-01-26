@@ -118,7 +118,6 @@ inline void fill_triangle_phong(int x1, int y1, float z1, Vec4 w1,
             // [PIPELINE] Z-Buffer
             if (z < zbuffer[idx]) {
                 zbuffer[idx] = z;
-                // Interpolamos a posição REAL do pixel no mundo para calcular a luz correta
                 Vec4 p_pixel = interp_vec(aw, bw, phi);
                 framebuffer[idx] = calc_luz(p_pixel, normal, mat, lightPos, camPos);
             }

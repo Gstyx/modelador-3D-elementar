@@ -6,10 +6,10 @@
 #include <SDL2/SDL.h>
 #include <vector>
 #include <iostream>
-#include <cstdio> // Para printf
+#include <cstdio> 
 #include <ctime>
 #include <cstdlib>
-#include <algorithm> // Para std::min e std::max
+#include <algorithm> 
 #include "rasterizer.h" 
 
 const int TARGET_FPS = 60;
@@ -67,9 +67,9 @@ int main(int argc, char* argv[]) {
             if(e.type==SDL_QUIT) running=false;
             if(e.type==SDL_KEYDOWN) {
                 float s = 0.2f;        // Velocidade de movimento
-                float mat_s = 0.05f;   // Velocidade de material
+                float mat_s = 0.05f;   
                 
-                // --- COMANDOS GERAIS (Funcionam em qualquer modo) ---
+               
                 
                 // Trocar Renderizador (Phong vs Flat)
                 if(e.key.keysym.sym == SDLK_m) { 

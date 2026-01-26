@@ -40,18 +40,14 @@ struct Vec4 {
 struct Mat4 {
     float m[4][4];
     
-    // Construtor: Inicializa como Matriz Identidade
-    // [1 0 0 0]
-    // [0 1 0 0]
-    // [0 0 1 0]
-    // [0 0 0 1]
+    // Inicializa como Matriz Identidade
     Mat4() { 
         for(int i=0; i<4; i++) 
             for(int j=0; j<4; j++) 
                 m[i][j] = (i==j) ? 1.0f : 0.0f; 
     }
     
-    // Multiplicação Matriz x Matriz (Concatenação de Transformações)
+    // Multiplicação Matriz x Matriz 
     Mat4 operator*(const Mat4& o) const {
         Mat4 res;
         for(int i=0; i<4; i++) {
@@ -63,7 +59,7 @@ struct Mat4 {
         return res;
     }
     
-    // Multiplicação Matriz x Vetor (Aplicação da Transformação)
+    // Multiplicação Matriz x Vetor 
     Vec4 operator*(const Vec4& v) const {
         return Vec4(
             m[0][0]*v.x + m[0][1]*v.y + m[0][2]*v.z + m[0][3]*v.w,
@@ -97,7 +93,7 @@ inline Mat4 translate(float tx, float ty, float tz) {
 
 // Escala (Muda o tamanho)
 inline Mat4 scale(float s) { 
-    Mat4 m; // Começa como Identidade
+    Mat4 m; 
     // Altera a diagonal principal
     m.m[0][0] = s; 
     m.m[1][1] = s; 
@@ -105,7 +101,7 @@ inline Mat4 scale(float s) {
     return m; 
 }
 
-// Rotação em X (Pitch - Olha para cima/baixo)
+// Rotação em X 
 inline Mat4 rotateX(float angle_rad) { 
     Mat4 m; // Começa como Identidade
     float c = std::cos(angle_rad);
@@ -119,7 +115,7 @@ inline Mat4 rotateX(float angle_rad) {
     return m; 
 }
 
-// Rotação em Y (Yaw - Olha para esquerda/direita)
+// Rotação em Y 
 inline Mat4 rotateY(float angle_rad) { 
     Mat4 m; // Começa como Identidade
     float c = std::cos(angle_rad);
@@ -133,9 +129,9 @@ inline Mat4 rotateY(float angle_rad) {
     return m; 
 }
 
-// Rotação em Z (Roll - Inclina a cabeça)
+// Rotação em Z 
 inline Mat4 rotateZ(float angle_rad) { 
-    Mat4 m; // Começa como Identidade
+    Mat4 m; 
     float c = std::cos(angle_rad);
     float s = std::sin(angle_rad);
     
