@@ -10,7 +10,7 @@ Este projeto implementa um pipeline gráfico completo (do zero) baseado na teori
 
 ---
 
-## 🚀 Funcionalidades Implementadas
+##  Funcionalidades Implementadas
 
 O projeto não utiliza OpenGL moderno (como `glBegin`/`glEnd` ou Shaders GLSL prontos). Toda a matemática e lógica de pixels foi implementada manualmente em C++:
 
@@ -26,7 +26,7 @@ O projeto não utiliza OpenGL moderno (como `glBegin`/`glEnd` ou Shaders GLSL pr
 
 ---
 
-## 🎮 Manual de Uso
+## Manual de Uso
 
 A aplicação funciona através de **Modos de Edição**. Use a tecla **TAB** para alternar entre controlar o Objeto, a Luz, a Câmera, os Materiais ou a Viewport.
 
