@@ -1,3 +1,8 @@
+/**
+ * MATH_UTILS.H
+ * Definições de Estruturas Matemáticas e Materiais.
+ */
+
 #ifndef MATH_UTILS_H
 #define MATH_UTILS_H
 
@@ -6,24 +11,28 @@
 #include <cstdint>
 #include <iostream>
 
-// Dimensões da tela (Sistema de Referência da Tela - SRT)
-const int LARGURA = 800;
-const int ALTURA = 600;
+const int SCREEN_W = 800;
+const int SCREEN_H = 600;
 
-// ==========================================
-// ESTRUTURAS BÁSICAS
-// ==========================================
 
+// Vetor 3D (Usado principalmente para Cores RGB e direções simples)
+struct Vec3 {
+    float x, y, z;
+    Vec3(float _x=0, float _y=0, float _z=0) : x(_x), y(_y), z(_z) {}
+    
+    Vec3 operator+(const Vec3& v) const { return Vec3(x+v.x, y+v.y, z+v.z); }
+    Vec3 operator*(float s)       const { return Vec3(x*s, y*s, z*s); }
+    Vec3 operator*(const Vec3& v) const { return Vec3(x*v.x, y*v.y, z*v.z); } // Component-wise (Cor * Luz)
+};
+
+// Vetor 4D (Coordenadas Homogêneas: X, Y, Z, W)
 struct Vec4 {
     float x, y, z, w;
-    // Construtor padrão
-    Vec4(float _x=0, float _y=0, float _z=0, float _w=1) 
-        : x(_x), y(_y), z(_z), w(_w) {}
+    Vec4(float _x=0, float _y=0, float _z=0, float _w=1) : x(_x), y(_y), z(_z), w(_w) {}
     
-    // Operações de Vetor
     Vec4 operator+(const Vec4& v) const { return Vec4(x+v.x, y+v.y, z+v.z, w+v.w); }
     Vec4 operator-(const Vec4& v) const { return Vec4(x-v.x, y-v.y, z-v.z, w-v.w); }
-    Vec4 operator*(float s) const { return Vec4(x*s, y*s, z*s, w*s); }
+    Vec4 operator*(float s)       const { return Vec4(x*s, y*s, z*s, w*s); }
     
     float dot(const Vec4& v) const { return x*v.x + y*v.y + z*v.z; }
     
@@ -37,29 +46,24 @@ struct Vec4 {
     }
 };
 
+// Matriz 4x4 (Transformações Afins)
 struct Mat4 {
     float m[4][4];
     
-    // Inicializa como Matriz Identidade
+    // Construtor: Identidade
     Mat4() { 
-        for(int i=0; i<4; i++) 
-            for(int j=0; j<4; j++) 
-                m[i][j] = (i==j) ? 1.0f : 0.0f; 
+        for(int i=0; i<4; i++) for(int j=0; j<4; j++) m[i][j] = (i==j) ? 1.0f : 0.0f; 
     }
     
-    // Multiplicação Matriz x Matriz 
     Mat4 operator*(const Mat4& o) const {
         Mat4 res;
-        for(int i=0; i<4; i++) {
-            for(int j=0; j<4; j++) {
-                res.m[i][j] = 0;
-                for(int k=0; k<4; k++) res.m[i][j] += m[i][k] * o.m[k][j];
-            }
+        for(int i=0; i<4; i++) for(int j=0; j<4; j++) {
+            res.m[i][j] = 0;
+            for(int k=0; k<4; k++) res.m[i][j] += m[i][k] * o.m[k][j];
         }
         return res;
     }
     
-    // Multiplicação Matriz x Vetor 
     Vec4 operator*(const Vec4& v) const {
         return Vec4(
             m[0][0]*v.x + m[0][1]*v.y + m[0][2]*v.z + m[0][3]*v.w,
@@ -70,116 +74,80 @@ struct Mat4 {
     }
 };
 
-// [PIPELINE] Definição Geométrica no SRU
+
+struct Material {
+    Vec3 ka;        
+    Vec3 kd;        
+    Vec3 ks;       
+    float shininess; 
+};
+
 struct Cubo {
     Vec4 posicao, rotacao, escala;
-    uint32_t cor_base;
-    float ka, kd, ks, shininess; 
+    Material mat;
 };
 
 // ==========================================
-// MATRIZES DE TRANSFORMAÇÃO (BEM ESCRITAS)
+//   TRANSFORMAÇÕES GEOMÉTRICAS
 // ==========================================
 
-// Translação (Move o objeto)
-inline Mat4 translate(float tx, float ty, float tz) { 
-    Mat4 m; // Começa como Identidade
-    // Altera a última coluna
-    m.m[0][3] = tx; 
-    m.m[1][3] = ty; 
-    m.m[2][3] = tz; 
+inline Mat4 translate(float x, float y, float z) { 
+    Mat4 m; 
+    m.m[0][3]=x; m.m[1][3]=y; m.m[2][3]=z; 
     return m; 
 }
 
-// Escala (Muda o tamanho)
 inline Mat4 scale(float s) { 
     Mat4 m; 
-    // Altera a diagonal principal
-    m.m[0][0] = s; 
-    m.m[1][1] = s; 
-    m.m[2][2] = s; 
+    m.m[0][0]=s; m.m[1][1]=s; m.m[2][2]=s; 
     return m; 
 }
 
-// Rotação em X 
-inline Mat4 rotateX(float angle_rad) { 
-    Mat4 m; // Começa como Identidade
-    float c = std::cos(angle_rad);
-    float s = std::sin(angle_rad);
-    
-    // Afeta Y e Z
-    m.m[1][1] =  c; 
-    m.m[1][2] = -s;
-    m.m[2][1] =  s; 
-    m.m[2][2] =  c;
+inline Mat4 rotateX(float a) { 
+    Mat4 m; float c=std::cos(a), s=std::sin(a); 
+    m.m[1][1]=c; m.m[1][2]=-s; m.m[2][1]=s; m.m[2][2]=c; 
     return m; 
 }
 
-// Rotação em Y 
-inline Mat4 rotateY(float angle_rad) { 
-    Mat4 m; // Começa como Identidade
-    float c = std::cos(angle_rad);
-    float s = std::sin(angle_rad);
-    
-    // Afeta X e Z
-    m.m[0][0] =  c; 
-    m.m[0][2] =  s;
-    m.m[2][0] = -s; 
-    m.m[2][2] =  c;
+inline Mat4 rotateY(float a) { 
+    Mat4 m; float c=std::cos(a), s=std::sin(a); 
+    m.m[0][0]=c; m.m[0][2]=s; m.m[2][0]=-s; m.m[2][2]=c; 
     return m; 
 }
 
-// Rotação em Z 
-inline Mat4 rotateZ(float angle_rad) { 
-    Mat4 m; 
-    float c = std::cos(angle_rad);
-    float s = std::sin(angle_rad);
-    
-    // Afeta X e Y
-    m.m[0][0] =  c; 
-    m.m[0][1] = -s;
-    m.m[1][0] =  s; 
-    m.m[1][1] =  c;
-    return m; 
-}
-
-// Projeção Perspectiva (Define o Volume de Visão / Frustum)
+// Projeção Perspectiva:
 inline Mat4 perspective(float fov, float aspect, float n, float f) {
-    Mat4 m; 
-    // Zera a matriz primeiro (pois projeção muda muito da identidade)
-    for(int i=0; i<4; i++) for(int j=0; j<4; j++) m.m[i][j] = 0.0f;
+    Mat4 m; float t = std::tan(fov/2);
+    // Zera matriz (importante pois projeção não é baseada na identidade)
+    for(int i=0;i<4;i++)for(int j=0;j<4;j++) m.m[i][j]=0;
     
-    float t = std::tan(fov / 2.0f);
-    
-    m.m[0][0] = 1.0f / (aspect * t);
-    m.m[1][1] = 1.0f / t;
-    m.m[2][2] = -(f + n) / (f - n);
-    m.m[2][3] = -(2.0f * f * n) / (f - n);
-    m.m[3][2] = -1.0f; //(W)
-    
+    m.m[0][0] = 1.0f/(aspect*t);
+    m.m[1][1] = 1.0f/t;
+    m.m[2][2] = -(f+n)/(f-n);
+    m.m[2][3] = -(2*f*n)/(f-n);
+    m.m[3][2] = -1.0f; // W recebe -Z para divisão perspectiva
     return m;
 }
 
-// ==========================================
-// UTILITÁRIOS E INTERPOLAÇÃO
-// ==========================================
 
-inline uint8_t clamp(float v) { 
-    if (v > 255) return 255;
-    if (v < 0) return 0;
-    return (uint8_t)v; 
-}
-
+inline uint8_t clamp(float v) { return v>255?255:(v<0?0:(uint8_t)v); }
 inline void swap_int(int& a, int& b) { int t=a; a=b; b=t; }
 inline void swap_float(float& a, float& b) { float t=a; a=b; b=t; }
 inline void swap_vec4(Vec4& a, Vec4& b) { Vec4 t=a; a=b; b=t; }
 
+// Interpolação Linear Simples
 inline float interp(float v1, float v2, float t) { 
-    return v1 + (v2 - v1) * t; 
+    return v1 + (v2-v1)*t; 
 }
 
+// Interpolação Linear de Vetores (Barycentric interpolation)
 inline Vec4 interp_vec(Vec4 v1, Vec4 v2, float t) { 
-    return v1 + (v2 - v1) * t; 
+    return v1 + (v2-v1)*t; 
+}
+
+// Interpolação Linear usada no Recorte
+inline Vec4 lerp_vertex(const Vec4& a, const Vec4& b, float t) {
+    return a + (b - a) * t;
 }
 
 #endif
