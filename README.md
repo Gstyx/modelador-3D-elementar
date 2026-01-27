@@ -44,7 +44,7 @@ A aplicação funciona através de **Modos de Edição**. Use a tecla **TAB** pa
 
 ---
 
-### 🕹️ Controles por Modo
+###  Controles por Modo
 
 Verifique o terminal ou a barra de título para saber em qual modo você está.
 
@@ -60,7 +60,7 @@ Controla as transformações geométricas do cubo selecionado.
 Move a posição da fonte de luz pontual no mundo.
 * **W / S / A / D:** Move a luz nos eixos X e Y.
 * **Q / E:** Aproxima ou afasta a luz (Eixo Z).
-* *Dica:* Use o renderizador Phong (**M**) para ver o reflexo especular se movendo.
+
 
 #### 3. Modo CÂMERA
 Move o observador (olho) pelo mundo e ajusta a lente.
@@ -92,7 +92,7 @@ Ajusta a área de desenho na janela (Recorte 2D).
 
 ---
 
-## 🛠️ Pré-requisitos e Instalação
+##  Pré-requisitos e Instalação
 
 Para compilar este projeto, é necessário ter um compilador C++ moderno e a biblioteca `SDL2`.
 
