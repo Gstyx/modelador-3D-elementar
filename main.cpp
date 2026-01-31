@@ -22,15 +22,18 @@ int indices[12][3] = { {0,1,2}, {0,2,3}, {5,4,7}, {5,7,6}, {3,2,6}, {3,6,7}, {4,
 // --- ESTADO GLOBAL ---
 Vec4 g_cam_pos(0,0,0);
 Vec4 g_light_pos(2,3,-5);
+Vec3 g_ambient_color(0.2f, 0.2f, 0.2f); // Cor da Luz Ambiente (Ila)
+Vec3 g_light_color(1.0f, 1.0f, 1.0f);   // Cor da Luz Pontual (Il)
 float g_fov = 1.04f;
 bool g_use_phong = true;
 int g_vp_x = 0, g_vp_y = 0, g_vp_w = SCREEN_W, g_vp_h = SCREEN_H;
 
 // --- CONTROLE DE INTERFACE ---
-enum Modo { M_OBJ, M_LUZ, M_CAM, M_MAT, M_VIEW };
+enum Modo { M_OBJ, M_LUZ, M_CAM, M_MAT, M_VIEW, M_LIGHT_COLOR };
 Modo modo_atual = M_OBJ;
 int mat_sel_type = 2; // 2 = Kd (Cor Base)
 int sel_idx = 0;
+int light_sel_type = 1; // 1 = Ambiente, 2 = Pontual
 
 void atualizar_interface(const std::vector<Cubo>& cena) {
     printf("\r                                                                                \r"); // Limpa linha
@@ -47,6 +50,11 @@ void atualizar_interface(const std::vector<Cubo>& cena) {
         case M_CAM:
             printf("[MODO: CAMERA] Pos: %.2f %.2f %.2f | FOV: %.2f", g_cam_pos.x, g_cam_pos.y, g_cam_pos.z, g_fov);
             break;
+        case M_LIGHT_COLOR:{
+            Vec3* lc = (light_sel_type == 1) ? &g_ambient_color : &g_light_color;
+            printf("[MODO: COR DA LUZ] %s | R:%.2f G:%.2f B:%.2f", 
+                (light_sel_type == 1 ? "AMBIENTE" : "PONTUAL"), lc->x, lc->y, lc->z);
+            break;  }
         case M_VIEW:
             printf("[MODO: VIEWPORT] X,Y: %d,%d | W,H: %d,%d", g_vp_x, g_vp_y, g_vp_w, g_vp_h);
             break;
@@ -61,6 +69,7 @@ void atualizar_interface(const std::vector<Cubo>& cena) {
             printf("[MODO: MATERIAL] %s | R:%.2f G:%.2f B:%.2f | Brilho: %.0f", 
                    tipo, target.x, target.y, target.z, c.mat.shininess);
             break;
+            
     }
     fflush(stdout);
 }
@@ -102,7 +111,7 @@ int main(int argc, char* argv[]) {
                 
                 // Comandos Gerais
                 if(e.key.keysym.sym == SDLK_m) { g_use_phong = !g_use_phong; std::cout << "\n[SISTEMA] Render: " << (g_use_phong?"PHONG":"FLAT") << std::endl; }
-                if(e.key.keysym.sym == SDLK_TAB) modo_atual = (Modo)((modo_atual+1)%5);
+                if(e.key.keysym.sym == SDLK_TAB) modo_atual = (Modo)((modo_atual + 1) % 6);
                 if(e.key.keysym.sym == SDLK_SPACE && !cena.empty()) sel_idx = (sel_idx+1)%cena.size();
                 
                 // [RESTORED] Cor Aleatória
@@ -179,7 +188,20 @@ int main(int argc, char* argv[]) {
                     if(e.key.keysym.sym==SDLK_7 || e.key.keysym.sym==SDLK_KP_7) cena[sel_idx].mat.shininess += 5.0f;
                     if(e.key.keysym.sym==SDLK_8 || e.key.keysym.sym==SDLK_KP_8) cena[sel_idx].mat.shininess = std::max(1.0f, cena[sel_idx].mat.shininess - 5.0f);
                 }
-                
+                else if(modo_atual == M_LIGHT_COLOR) {
+                    if(e.key.keysym.sym == SDLK_1) light_sel_type = 1;
+                    if(e.key.keysym.sym == SDLK_2) light_sel_type = 2;
+                    
+                    Vec3* target = (light_sel_type == 1) ? &g_ambient_color : &g_light_color;
+                    
+                    if(e.key.keysym.sym == SDLK_d) target->x = std::min(1.0f, target->x + 0.05f); // R+
+                    if(e.key.keysym.sym == SDLK_a) target->x = std::max(0.0f, target->x - 0.05f); // R-
+                    if(e.key.keysym.sym == SDLK_w) target->y = std::min(1.0f, target->y + 0.05f); // G+
+                    if(e.key.keysym.sym == SDLK_s) target->y = std::max(0.0f, target->y - 0.05f); // G-
+                    if(e.key.keysym.sym == SDLK_e) target->z = std::min(1.0f, target->z + 0.05f); // B+
+                    if(e.key.keysym.sym == SDLK_q) target->z = std::max(0.0f, target->z - 0.05f); // B-
+                }
+                                
                 atualizar_interface(cena);
             }
         }
@@ -231,11 +253,14 @@ int main(int argc, char* argv[]) {
                     
                     // 8. Rasterização
                     if(g_use_phong) {
-                        fill_phong(x1,y1,p1.w,t1, x2,y2,p2.w,t2, x3,y3,p3.w,t3, n, cubo, g_light_pos, Vec4(0,0,0), fb, zb, g_vp_w, g_vp_h, g_vp_x, g_vp_y);
+                        fill_phong(x1, y1, p1.w, t1, x2, y2, p2.w, t2, x3, y3, p3.w, t3, 
+                                    n, cubo, g_light_pos, Vec4(0,0,0), fb, zb, 
+                                    g_vp_w, g_vp_h, g_vp_x, g_vp_y, g_light_color, g_ambient_color);
                     } else {
                         Vec4 lightPosView = view * g_light_pos;
                         Vec4 centro = (t1 + t2 + t3) * 0.333f;
-                        uint32_t c = calc_luz_rgb(centro, n, cubo, lightPosView, Vec4(0,0,0));
+                        uint32_t c = calc_luz_rgb(centro, n, cubo, lightPosView, Vec4(0,0,0), 
+                                     g_light_color, g_ambient_color);   
                         fill_flat(x1,y1,p1.w, x2,y2,p2.w, x3,y3,p3.w, c, fb, zb, g_vp_w, g_vp_h, g_vp_x, g_vp_y);
                     }
                 }
