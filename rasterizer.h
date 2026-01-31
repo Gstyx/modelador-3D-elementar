@@ -12,8 +12,7 @@
 
 
 // Calcula a cor final de um pixel combinando luz e material RGB
-inline uint32_t calc_luz_rgb(Vec4 pos, Vec4 norm, Cubo cubo, Vec4 lightPos, Vec4 camPos) {
-    Vec3 lightColor(1.0f, 1.0f, 1.0f); // Luz branca
+inline uint32_t calc_luz_rgb(Vec4 pos, Vec4 norm, Cubo cubo, Vec4 lightPos, Vec4 camPos, Vec3 lightColor, Vec3 ambientColor) {
     
     Vec4 L = lightPos - pos; L.normalize(); // Vetor Luz
     Vec4 N = norm; N.normalize();           // Normal da superfície
@@ -27,7 +26,7 @@ inline uint32_t calc_luz_rgb(Vec4 pos, Vec4 norm, Cubo cubo, Vec4 lightPos, Vec4
     float spec = (diff > 0) ? std::pow(std::max(0.0f, R.dot(V)), cubo.mat.shininess) : 0.0f;
     
     // Combinação: I = Ka + Kd(N.L) + Ks(R.V)^n
-    Vec3 ambient  = cubo.mat.ka * lightColor;
+    Vec3 ambient  = cubo.mat.ka * ambientColor;
     Vec3 diffuse  = cubo.mat.kd * lightColor * diff;
     Vec3 specular = cubo.mat.ks * lightColor * spec;
     
@@ -89,9 +88,10 @@ void clip_triangle_sutherland_hodgman(const Vec4& v1, const Vec4& v2, const Vec4
 inline void fill_phong(int x1, int y1, float z1, Vec4 w1, 
                        int x2, int y2, float z2, Vec4 w2, 
                        int x3, int y3, float z3, Vec4 w3, 
-                       Vec4 n, Cubo mat, Vec4 lp, Vec4 cp,
-                       std::vector<uint32_t>& fb, std::vector<float>& zb,
-                       int vpw, int vph, int vpx, int vpy) {
+                       Vec4 n, Cubo cubo, Vec4 lightPos, Vec4 camPos, 
+                       std::vector<uint32_t>& fb, std::vector<float>& zb, 
+                       int vpw, int vph, int vpx, int vpy,
+                       Vec3 lightColor, Vec3 ambientColor) {
     
     // Ordenação dos vértices por Y (Y1 <= Y2 <= Y3)
     if (y1>y2) { swap_int(x1,x2); swap_int(y1,y2); swap_float(z1,z2); swap_vec4(w1,w2); }
@@ -132,7 +132,8 @@ inline void fill_phong(int x1, int y1, float z1, Vec4 w1,
                 zb[idx] = z;
                 // Interpolação Phong
                 Vec4 p = interp_vec(aw, bw, phi);
-                fb[idx] = calc_luz_rgb(p, n, mat, lp, cp);
+                fb[idx] = calc_luz_rgb(p, n, cubo, lightPos, camPos, 
+                                        lightColor, ambientColor);
             }
         }
     }
