@@ -90,6 +90,18 @@ Ajusta a área de desenho na janela (Recorte 2D).
 * **A / D:** Aumenta/Diminui a Largura da viewport.
 * **Setas:** Movem a posição (X, Y) da viewport na tela.
 
+#### 6. Modo COR DA LUZ (Edição RGB das Fontes)
+Este modo permite configurar as cores das fontes de luz de forma independente, alterando a percepção cromática da cena conforme a teoria de reflexão seletiva.
+**Passo 1: Selecione a Fonte de Luz**
+* **Tecla 1:** Seleciona a **Luz Ambiente** ($I_{la}$).
+* **Tecla 2:** Seleciona a **Luz Pontual** ($I_{l}$).
+
+**Passo 2: Edite a Cor da Fonte (RGB)**
+* **A / D:** Diminui / Aumenta o canal **Vermelho (R)**.
+* **S / W:** Diminui / Aumenta o canal **Verde (G)**.
+* **Q / E:** Diminui / Aumenta o canal **Azul (B)**.
+
+
 ---
 
 ##  Pré-requisitos e Instalação
