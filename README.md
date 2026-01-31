@@ -1,6 +1,6 @@
 # Trabalho Final de Computação Gráfica - Renderizador 3D
 
-Este projeto implementa um pipeline gráfico completo (do zero) baseado na teoria de **Alvy Ray Smith**. O renderizador suporta transformações geométricas, recorte (clipping), projeção, rasterização e modelos de iluminação avançados.
+Este projeto implementa um pipeline gráfico completo baseado na teoria de **Alvy Ray Smith**. O renderizador suporta transformações geométricas, recorte, projeção, rasterização e modelos de iluminação avançados.
 
 **Disciplina:** Computação Gráfica - Unioeste 2026  
 **Alunos:**
