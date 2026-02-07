@@ -118,7 +118,7 @@ Para compilar este projeto, é necessário ter um compilador C++ moderno e a bib
 
 2.  **Compile o projeto:**
     ```bash
-    g++ main.cpp -o renderizador -lSDL2
+    make
     ```
 
 3.  **Execute:**
