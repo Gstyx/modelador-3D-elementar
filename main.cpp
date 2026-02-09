@@ -1,6 +1,7 @@
 /**
  * TRABALHO FINAL - COMPUTACAO GRAFICA (UNIOESTE)
- * Implementacao do Pipeline Grafico Classico (Alvy Ray Smith / Blinn)
+ * Implementação Didática do Pipeline Gráfico Clássico
+ * Baseado no modelo de Alvy Ray Smith
  */
 
 #include <SDL2/SDL.h>
@@ -15,28 +16,28 @@
 const int TARGET_FPS = 60;
 const int FRAME_DELAY = 1000 / TARGET_FPS;
 
-// --- GEOMETRIA ---
+// --- GEOMETRIA (ESPAÇO DO OBJETO) ---
 Vec4 verts_cubo[8] = { {-1,-1,-1}, {1,-1,-1}, {1,1,-1}, {-1,1,-1}, {-1,-1,1}, {1,-1,1}, {1,1,1}, {-1,1,1} };
 int indices[12][3] = { {0,1,2}, {0,2,3}, {5,4,7}, {5,7,6}, {3,2,6}, {3,6,7}, {4,5,1}, {4,1,0}, {4,0,3}, {4,3,7}, {1,5,6}, {1,6,2} };
 
-// --- ESTADO GLOBAL ---
+// --- ESTADO GLOBAL DA CENA ---
 Vec4 g_cam_pos(0,0,0);
 Vec4 g_light_pos(2,3,-5);
-Vec3 g_ambient_color(0.2f, 0.2f, 0.2f); // Cor da Luz Ambiente (Ila)
-Vec3 g_light_color(1.0f, 1.0f, 1.0f);   // Cor da Luz Pontual (Il)
+Vec3 g_ambient_color(0.2f, 0.2f, 0.2f); // Cor da Luz Ambiente Global
+Vec3 g_light_color(1.0f, 1.0f, 1.0f);   // Cor da Luz Pontual (Branca)
 float g_fov = 1.04f;
 bool g_use_phong = true;
 int g_vp_x = 0, g_vp_y = 0, g_vp_w = SCREEN_W, g_vp_h = SCREEN_H;
 
-// --- CONTROLE DE INTERFACE ---
+// --- INTERFACE / INPUT ---
 enum Modo { M_OBJ, M_LUZ, M_CAM, M_MAT, M_VIEW, M_LIGHT_COLOR };
 Modo modo_atual = M_OBJ;
-int mat_sel_type = 2; // 2 = Kd (Cor Base)
+int mat_sel_type = 2; // Inicia em Kd (Cor)
 int sel_idx = 0;
-int light_sel_type = 1; // 1 = Ambiente, 2 = Pontual
+int light_sel_type = 1;
 
 void atualizar_interface(const std::vector<Cubo>& cena) {
-    printf("\r                                                                                \r"); // Limpa linha
+    printf("\r                                                                                \r"); 
     
     switch(modo_atual) {
         case M_OBJ:
@@ -52,7 +53,7 @@ void atualizar_interface(const std::vector<Cubo>& cena) {
             break;
         case M_LIGHT_COLOR:{
             Vec3* lc = (light_sel_type == 1) ? &g_ambient_color : &g_light_color;
-            printf("[MODO: COR DA LUZ] %s | R:%.2f G:%.2f B:%.2f", 
+            printf("[MODO: COR LUZ] %s | R:%.2f G:%.2f B:%.2f", 
                 (light_sel_type == 1 ? "AMBIENTE" : "PONTUAL"), lc->x, lc->y, lc->z);
             break;  }
         case M_VIEW:
@@ -69,7 +70,6 @@ void atualizar_interface(const std::vector<Cubo>& cena) {
             printf("[MODO: MATERIAL] %s | R:%.2f G:%.2f B:%.2f | Brilho: %.0f", 
                    tipo, target.x, target.y, target.z, c.mat.shininess);
             break;
-            
     }
     fflush(stdout);
 }
@@ -85,48 +85,47 @@ int main(int argc, char* argv[]) {
     std::vector<float> zb(SCREEN_W * SCREEN_H);
     std::vector<Cubo> cena;
     
-    // Configuração Inicial da Cena
+    // --- INICIALIZAÇÃO DA CENA ---
+    
+    // Cubo 1: Material "Plástico Vermelho"
     Cubo c1; c1.posicao=Vec4(-1.2,0,-5); c1.rotacao=Vec4(0.5,0.6,0); c1.escala=Vec4(1,1,1);
-    c1.mat.ka = Vec3(0.1,0.0,0.0); c1.mat.kd = Vec3(0.8,0.0,0.0); c1.mat.ks = Vec3(1.0,1.0,1.0); c1.mat.shininess=50;
+    c1.mat.ka = Vec3(0.1,0.0,0.0); // Sombra vermelha escura
+    c1.mat.kd = Vec3(0.8,0.0,0.0); // Cor vermelha vibrante
+    c1.mat.ks = Vec3(1.0,1.0,1.0); // Reflexo branco (comum em plásticos)
+    c1.mat.shininess=50;
     cena.push_back(c1);
 
+    // Cubo 2: Material "Plástico Verde"
     Cubo c2; c2.posicao=Vec4(1.2,0,-5); c2.rotacao=Vec4(0,-0.3,0); c2.escala=Vec4(1,1,1);
-    c2.mat.ka = Vec3(0.0,0.1,0.0); c2.mat.kd = Vec3(0.0,0.8,0.0); c2.mat.ks = Vec3(1.0,1.0,1.0); c2.mat.shininess=100;
+    c2.mat.ka = Vec3(0.0,0.1,0.0); 
+    c2.mat.kd = Vec3(0.0,0.8,0.0); 
+    c2.mat.ks = Vec3(1.0,1.0,1.0); 
+    c2.mat.shininess=100;
     cena.push_back(c2);
     
     bool running = true;
-    
-    std::cout << "=== RENDERIZADOR 3D FINAL ===" << std::endl;
-    std::cout << "[TAB] Alternar Modos | [Espaco] Alternar Cubo" << std::endl;
-    std::cout << "[M] Renderizador (Phong/Flat) | [C] Cor Aleatoria" << std::endl;
     atualizar_interface(cena);
 
     while(running) {
         Uint32 start = SDL_GetTicks();
         SDL_Event e;
+        
+        // --- 1. PROCESSAMENTO DE INPUT (CPU) ---
         while(SDL_PollEvent(&e)) {
             if(e.type==SDL_QUIT) running=false;
             if(e.type==SDL_KEYDOWN) {
-                float s = 0.2f; float mat_s = 0.05f;
-                
-                // Comandos Gerais
-                if(e.key.keysym.sym == SDLK_m) { g_use_phong = !g_use_phong; std::cout << "\n[SISTEMA] Render: " << (g_use_phong?"PHONG":"FLAT") << std::endl; }
+                float s = 0.2f; 
+                // Seleção de Modos
+                if(e.key.keysym.sym == SDLK_m) g_use_phong = !g_use_phong;
                 if(e.key.keysym.sym == SDLK_TAB) modo_atual = (Modo)((modo_atual + 1) % 6);
                 if(e.key.keysym.sym == SDLK_SPACE && !cena.empty()) sel_idx = (sel_idx+1)%cena.size();
-                
-                // [RESTORED] Cor Aleatória
-                if(e.key.keysym.sym == SDLK_c && !cena.empty()) {
-                    cena[sel_idx].mat.kd = Vec3((rand()%100)/100.0f, (rand()%100)/100.0f, (rand()%100)/100.0f);
-                }
-                
-                // Novo Cubo
                 if(e.key.keysym.sym == SDLK_n) {
                     Cubo novo = c1; novo.posicao = Vec4(0,0,-5);
                     novo.mat.kd = Vec3((rand()%100)/100.0f, (rand()%100)/100.0f, (rand()%100)/100.0f);
                     cena.push_back(novo); sel_idx = cena.size()-1;
                 }
 
-                // Lógica de Controle por Modo
+                // Lógica de Movimento por Modo
                 if(modo_atual == M_OBJ && !cena.empty()) {
                     if(e.key.keysym.sym==SDLK_w) cena[sel_idx].posicao.y += s;
                     if(e.key.keysym.sym==SDLK_s) cena[sel_idx].posicao.y -= s;
@@ -134,7 +133,6 @@ int main(int argc, char* argv[]) {
                     if(e.key.keysym.sym==SDLK_d) cena[sel_idx].posicao.x += s;
                     if(e.key.keysym.sym==SDLK_q) cena[sel_idx].posicao.z += s;
                     if(e.key.keysym.sym==SDLK_e) cena[sel_idx].posicao.z -= s;
-                    
                     if(e.key.keysym.sym==SDLK_LEFT) cena[sel_idx].rotacao.y -= 0.1;
                     if(e.key.keysym.sym==SDLK_RIGHT) cena[sel_idx].rotacao.y += 0.1;
                     if(e.key.keysym.sym==SDLK_UP)   cena[sel_idx].rotacao.x -= 0.1;
@@ -169,7 +167,6 @@ int main(int argc, char* argv[]) {
                     if(e.key.keysym.sym==SDLK_RIGHT) g_vp_x += 10;
                 }
                 else if(modo_atual == M_MAT && !cena.empty()) {
-                    // Seleciona coeficiente
                     if(e.key.keysym.sym==SDLK_1 || e.key.keysym.sym==SDLK_KP_1) mat_sel_type = 1; 
                     if(e.key.keysym.sym==SDLK_2 || e.key.keysym.sym==SDLK_KP_2) mat_sel_type = 2; 
                     if(e.key.keysym.sym==SDLK_3 || e.key.keysym.sym==SDLK_KP_3) mat_sel_type = 3; 
@@ -177,13 +174,12 @@ int main(int argc, char* argv[]) {
                     Vec3* target = (mat_sel_type==1) ? &cena[sel_idx].mat.ka : 
                                    (mat_sel_type==2) ? &cena[sel_idx].mat.kd : &cena[sel_idx].mat.ks;
                     
-                    // Edita RGB com WASD+QE
-                    if(e.key.keysym.sym==SDLK_d) target->x = std::min(1.0f, target->x + 0.05f); // Red+
-                    if(e.key.keysym.sym==SDLK_a) target->x = std::max(0.0f, target->x - 0.05f); // Red-
-                    if(e.key.keysym.sym==SDLK_w) target->y = std::min(1.0f, target->y + 0.05f); // Green+
-                    if(e.key.keysym.sym==SDLK_s) target->y = std::max(0.0f, target->y - 0.05f); // Green-
-                    if(e.key.keysym.sym==SDLK_e) target->z = std::min(1.0f, target->z + 0.05f); // Blue+
-                    if(e.key.keysym.sym==SDLK_q) target->z = std::max(0.0f, target->z - 0.05f); // Blue-
+                    if(e.key.keysym.sym==SDLK_d) target->x = std::min(1.0f, target->x + 0.05f); 
+                    if(e.key.keysym.sym==SDLK_a) target->x = std::max(0.0f, target->x - 0.05f); 
+                    if(e.key.keysym.sym==SDLK_w) target->y = std::min(1.0f, target->y + 0.05f); 
+                    if(e.key.keysym.sym==SDLK_s) target->y = std::max(0.0f, target->y - 0.05f); 
+                    if(e.key.keysym.sym==SDLK_e) target->z = std::min(1.0f, target->z + 0.05f); 
+                    if(e.key.keysym.sym==SDLK_q) target->z = std::max(0.0f, target->z - 0.05f); 
                     
                     if(e.key.keysym.sym==SDLK_7 || e.key.keysym.sym==SDLK_KP_7) cena[sel_idx].mat.shininess += 5.0f;
                     if(e.key.keysym.sym==SDLK_8 || e.key.keysym.sym==SDLK_KP_8) cena[sel_idx].mat.shininess = std::max(1.0f, cena[sel_idx].mat.shininess - 5.0f);
@@ -194,33 +190,34 @@ int main(int argc, char* argv[]) {
                     
                     Vec3* target = (light_sel_type == 1) ? &g_ambient_color : &g_light_color;
                     
-                    if(e.key.keysym.sym == SDLK_d) target->x = std::min(1.0f, target->x + 0.05f); // R+
-                    if(e.key.keysym.sym == SDLK_a) target->x = std::max(0.0f, target->x - 0.05f); // R-
-                    if(e.key.keysym.sym == SDLK_w) target->y = std::min(1.0f, target->y + 0.05f); // G+
-                    if(e.key.keysym.sym == SDLK_s) target->y = std::max(0.0f, target->y - 0.05f); // G-
-                    if(e.key.keysym.sym == SDLK_e) target->z = std::min(1.0f, target->z + 0.05f); // B+
-                    if(e.key.keysym.sym == SDLK_q) target->z = std::max(0.0f, target->z - 0.05f); // B-
+                    if(e.key.keysym.sym == SDLK_d) target->x = std::min(1.0f, target->x + 0.05f); 
+                    if(e.key.keysym.sym == SDLK_a) target->x = std::max(0.0f, target->x - 0.05f); 
+                    if(e.key.keysym.sym == SDLK_w) target->y = std::min(1.0f, target->y + 0.05f); 
+                    if(e.key.keysym.sym == SDLK_s) target->y = std::max(0.0f, target->y - 0.05f); 
+                    if(e.key.keysym.sym == SDLK_e) target->z = std::min(1.0f, target->z + 0.05f); 
+                    if(e.key.keysym.sym == SDLK_q) target->z = std::max(0.0f, target->z - 0.05f); 
                 }
-                                
+                
                 atualizar_interface(cena);
             }
         }
         
-        std::fill(fb.begin(), fb.end(), 0xFF222222);
-        std::fill(zb.begin(), zb.end(), 1000.0f);
+        // --- 2. PREPARAÇÃO DO FRAME (Limpeza) ---
+        std::fill(fb.begin(), fb.end(), 0xFF222222); // Fundo Cinza Escuro
+        std::fill(zb.begin(), zb.end(), 1000.0f);    // Reset Z-Buffer
         
-        // --- PIPELINE GRÁFICO (Alvy Ray Smith) ---
+        // --- 3. PIPELINE GRÁFICO (GEOMETRY & RASTER) ---
         
-        // 1. Matrizes de Camera e Projeção (Mundo -> View -> Clip)
+        // Estágio: Definição da Câmera (Matriz View) e Lente (Matriz Projection)
         Mat4 proj = perspective(g_fov, (float)SCREEN_W/SCREEN_H, 0.1f, 100.0f);
         Mat4 view = translate(-g_cam_pos.x, -g_cam_pos.y, -g_cam_pos.z);
         
         for(auto& cubo : cena) {
-            // 2. Matriz de Modelo (Objeto -> Mundo)
+            // Estágio: Matriz Model (Transforma Objeto -> Mundo)
             Mat4 model = translate(cubo.posicao.x, cubo.posicao.y, cubo.posicao.z) * rotateY(cubo.rotacao.y) * rotateX(cubo.rotacao.x) * scale(cubo.escala.x);
-            Mat4 model_view = view * model; 
+            Mat4 model_view = view * model; // Combinada para levar ao View Space
             
-            // 3. Transformação de Vértices para View Space
+            // Estágio: Vertex Shader (Transformação de Vértices)
             Vec4 view_verts[8];
             for(int i=0; i<8; i++) view_verts[i] = model_view * verts_cubo[i];
             
@@ -229,34 +226,36 @@ int main(int argc, char* argv[]) {
                 Vec4 v2 = view_verts[indices[i][1]];
                 Vec4 v3 = view_verts[indices[i][2]];
                 
-                // 4. RECORTE GEOMÉTRICO (Clipping Sutherland-Hodgman)
+                // Estágio: Clipping (Recorte Geométrico Sutherland-Hodgman)
                 std::vector<Vec4> clipped;
                 clip_triangle_sutherland_hodgman(v1, v2, v3, clipped);
                 
+                // Processa os triângulos resultantes do recorte
                 for(size_t k=0; k < clipped.size(); k+=3) {
                     Vec4 t1 = clipped[k], t2 = clipped[k+1], t3 = clipped[k+2];
                     
-                    // 5. Back-Face Culling
+                    // Estágio: Back-Face Culling (No View Space)
                     Vec4 n = (t3 - t1).cross(t2 - t1); n.normalize();
-                    if(n.dot(t1 * -1.0f) <= 0) continue;
+                    if(n.dot(t1 * -1.0f) <= 0) continue; // Descarta se não olha para a câmera
                     
-                    // 6. Projeção e Divisão Perspectiva
+                    // Estágio: Projeção e Divisão Perspectiva (NDC)
                     Vec4 p1 = proj*t1, p2 = proj*t2, p3 = proj*t3;
                     if(p1.w!=0) { p1.x/=p1.w; p1.y/=p1.w; p1.z/=p1.w; }
                     if(p2.w!=0) { p2.x/=p2.w; p2.y/=p2.w; p2.z/=p2.w; }
                     if(p3.w!=0) { p3.x/=p3.w; p3.y/=p3.w; p3.z/=p3.w; }
                     
-                    // 7. Transformação de Viewport (Normalizado -> Tela)
+                    // Estágio: Viewport Transform (Tela)
                     int x1 = (p1.x+1)*0.5*g_vp_w + g_vp_x; int y1 = (1-p1.y)*0.5*g_vp_h + g_vp_y;
                     int x2 = (p2.x+1)*0.5*g_vp_w + g_vp_x; int y2 = (1-p2.y)*0.5*g_vp_h + g_vp_y;
                     int x3 = (p3.x+1)*0.5*g_vp_w + g_vp_x; int y3 = (1-p3.y)*0.5*g_vp_h + g_vp_y;
                     
-                    // 8. Rasterização
+                    // Estágio: Rasterização (Scanline + ZBuffer + Pixel Shader)
                     if(g_use_phong) {
                         fill_phong(x1, y1, p1.w, t1, x2, y2, p2.w, t2, x3, y3, p3.w, t3, 
                                     n, cubo, g_light_pos, Vec4(0,0,0), fb, zb, 
                                     g_vp_w, g_vp_h, g_vp_x, g_vp_y, g_light_color, g_ambient_color);
                     } else {
+                        // Flat Shading: Calcula luz uma vez por triângulo
                         Vec4 lightPosView = view * g_light_pos;
                         Vec4 centro = (t1 + t2 + t3) * 0.333f;
                         uint32_t c = calc_luz_rgb(centro, n, cubo, lightPosView, Vec4(0,0,0), 
